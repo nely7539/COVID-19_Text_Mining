@@ -1,0 +1,124 @@
+---
+title: "COVID-19 - Sentiment Analysis of Twitter Data"
+author: "Nicole Ely & Arden Geffen"
+output: html_notebook
+---
+
+### Public Perception of COVID-19 and COVID-19 Safety Measures
+
+##### Import Packages:
+```{r}
+library(twitteR)
+library(tidyverse)
+library(tidytext)
+library(readxl)
+library(reshape2)
+library(wordcloud)
+library('textdata')
+afinn <- get_sentiments("afinn")
+```
+
+
+##### Load data:
+```{r}
+tweets <- read.csv("/Users/nicoleely/Desktop/Fall_2021/DM_TM/FinalProject/Main/covid_tweets2.csv")
+```
+
+
+Clean & summarize text:
+```{r}
+tweets_tokenized <- tweets %>%
+  unnest_tokens(word, text) %>%
+  inner_join(afinn, by = "word")
+```
+
+```{r}
+tweets_tokenized %>% 
+  group_by(word) %>% 
+  summarise(uses = n()) %>%
+  arrange(desc(uses)) %>%  
+  
+head(10)
+```
+```{r}
+tweets_tokenized %>% 
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment) %>%
+  spread(sentiment, n, fill = 0)%>%
+  mutate(sentiment = positive - negative)
+```
+
+
+```{r}
+tweets_tokenized %>% inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment) %>%
+  spread(sentiment, n, fill = 0)%>%
+  mutate(sentiment = positive - negative) %>% 
+  filter(negative>0) %>% 
+  nrow()
+  
+```
+
+```{r}
+tweets_tokenized %>% inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative) %>% 
+  filter(positive>0) %>% 
+  nrow()
+```
+
+
+```{r}
+tweets_nrc <- tweets_tokenized %>%
+  inner_join(get_sentiments("nrc")) %>%
+  group_by(word, sentiment) %>%
+  count(mycount = n()) %>%
+  distinct() %>%
+  filter(sentiment %in%
+  c("trust", "anger", "fear", "joy"))
+
+
+```
+
+
+### Visualizations
+
+For visualizations, since our data is so large, we focused on plots that choose the top words from the data based on uses, for example bar graphs.
+
+```{r}
+tweets_tokenized %>% 
+  group_by(word) %>% 
+  summarise(uses = n()) %>% 
+  arrange(desc(uses)) %>% 
+  slice(1:15) %>% 
+  ggplot() + 
+  geom_bar(aes(x = word, y = uses),
+  stat = "identity") + 
+  coord_flip() + 
+  theme_minimal() 
+```
+
+```{r}
+covid_wordcloud <- tweets_tokenized %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word~sentiment, value.var ="n", fill=0) %>%
+  comparison.cloud(colors = c("#5c5c5c","#000000"), max.words = 50, title.colors = c("#5c5c5c","#000000"), title.size=2)
+
+```
+
+
+NRC Sentiments
+
+```{r}
+tweets_tokenized %>% 
+  inner_join(get_sentiments("nrc")) %>%
+  ggplot(aes(x = sentiment)) +
+  geom_bar() + 
+  xlab("") +
+  ylab("") 
+
+#original color #4287f5
+
+```
